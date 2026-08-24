@@ -8,6 +8,7 @@ Expose all usable time-series imputation models.
 from .brits import BRITS
 from .csai import CSAI
 from .csdi import CSDI
+from .mdtim import MDTIM
 from .gpvae import GPVAE
 from .mrnn import MRNN
 from .saits import SAITS
@@ -82,6 +83,7 @@ __all__ = [
     "GPVAE",
     "USGAN",
     "CSDI",
+    "MDTIM",
     "SCINet",
     "RevIN_SCINet",
     "Koopa",

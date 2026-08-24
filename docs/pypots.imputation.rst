@@ -324,6 +324,15 @@ pypots.imputation.csdi
    :show-inheritance:
    :inherited-members:
 
+pypots.imputation.mdtim
+------------------------------
+
+.. automodule:: pypots.imputation.mdtim
+   :members:
+   :undoc-members:
+   :show-inheritance:
+   :inherited-members:
+
 pypots.imputation.usgan
 ------------------------------
 
