@@ -1,0 +1,108 @@
+question:
+  kind: capability
+  ask: "On ETTh1 with ~30% injected missing values, does CoIFNet (joint imputation-forecasting) forecast at least as well as an impute-then-forecast baseline and competitively with TimeMixer trained on the same imputed data?"
+
+loop: {max_iterations: 8, fix_code: true}
+
+benchmarks:
+  - name: coifnet-partial-obs-forecast
+    suite: "notebook:eval/eval_coifnet_missing_forecast.ipynb"
+    scorer: mae_ratio_coifnet_over_impute_baseline
+    baseline: none
+    metrics:
+      - name: mae_ratio_coifnet_over_impute_baseline
+        role: target
+        bar: goal
+        direction: min
+        threshold: 1.0
+        reads_as: "CoIFNet's horizon MAE divided by the mean-imputation+DLinear baseline's MAE; <=1.0 means CoIFNet is at least as good."
+      - name: frac_finite_predictions_coifnet
+        role: guardrail
+        bar: floor
+        direction: max
+        threshold: 1.0
+        reads_as: "Fraction of CoIFNet's forecast entries that are finite (not NaN/Inf); RevON's observed-only stats must never blow up."
+      - name: mse_ratio_coifnet_over_impute_baseline
+        role: diagnostic
+        bar: goal
+        direction: min
+        threshold: 1.0
+        reads_as: "Same ratio as the target metric but on MSE, PyPOTS's other headline forecasting metric; reported for context, not gated (see policy)."
+      - name: mae_ratio_coifnet_over_timemixer
+        role: diagnostic
+        bar: goal
+        direction: min
+        threshold: 1.0
+        reads_as: "CoIFNet's MAE divided by TimeMixer-on-imputed-data's MAE; a harder bar than the target, reported not gated."
+      - name: coifnet_mae
+        role: diagnostic
+        bar: ceiling
+        direction: max
+        threshold: 100.0
+        reads_as: "CoIFNet's raw horizon MAE; ceiling is a loose sanity bound derived from ETTh1's raw (unnormalized) value range (roughly -20..60 across the 7 channels), so a well-behaved model's MAE must stay far below the channel range itself."
+      - name: coifnet_mse
+        role: diagnostic
+        bar: ceiling
+        direction: max
+        threshold: 10000.0
+        reads_as: "CoIFNet's raw horizon MSE; ceiling is the square-scale analog of the MAE sanity bound above (100^2), i.e. a model producing errors on the order of the raw value range, not a tighter fit."
+      - name: impute_baseline_mae
+        role: diagnostic
+        bar: ceiling
+        direction: max
+        threshold: 100.0
+        reads_as: "Mean-imputation + DLinear baseline's raw horizon MAE; same sanity ceiling as coifnet_mae."
+      - name: impute_baseline_mse
+        role: diagnostic
+        bar: ceiling
+        direction: max
+        threshold: 10000.0
+        reads_as: "Mean-imputation + DLinear baseline's raw horizon MSE; same sanity ceiling as coifnet_mse."
+      - name: timemixer_mae
+        role: diagnostic
+        bar: ceiling
+        direction: max
+        threshold: 100.0
+        reads_as: "TimeMixer-on-mean-imputed-data's raw horizon MAE; same sanity ceiling as coifnet_mae."
+      - name: timemixer_mse
+        role: diagnostic
+        bar: ceiling
+        direction: max
+        threshold: 10000.0
+        reads_as: "TimeMixer-on-mean-imputed-data's raw horizon MSE; same sanity ceiling as coifnet_mse."
+    policy: {guardrail_veto: true}
+
+compute: {tier: cpu}
+
+held_constant:
+  - "Same ETTh1 CSV, same sliding-window split (train/val/test), and the same seeded 0.3 MCAR missingness mask applied to the lookback window X for all three pipelines"
+  - "Same n_steps/n_pred_steps/n_features/n_pred_features, epochs, batch_size and seed across CoIFNet, the impute-then-forecast baseline, and TimeMixer"
+  - "X_pred (forecast horizon ground truth) stays fully observed for all pipelines so MAE/MSE are computed on identical targets with no masking"
+
+avoid:
+  - "Do not treat this run as reproducing the paper's 24.40%/23.81% figure, which is reported at missing rate 0.6 against an unnamed SOTA comparator, not at 0.3 against the weaker impute-then-forecast baseline required here"
+  - "Do not use wall-clock timing as the instrument; only masked MAE/MSE on the horizon are measured"
+  - "Do not swap in PhysioNet silently if ETT is reachable; PhysioNet has no forecasting-horizon analog in the paper and would only be a repo-internal sanity check"
+
+report:
+  headline: "CoIFNet's joint imputation-forecasting matches or beats a mean-imputation+DLinear baseline on partially-observed ETTh1, with TimeMixer reported alongside for context."
+  findings:
+    - "CoIFNet's MAE is {mae_ratio_coifnet_over_impute_baseline:%} of the impute-then-forecast baseline's MAE (<=100% means at least as good)."
+    - "CoIFNet's MSE is {mse_ratio_coifnet_over_impute_baseline:%} of the baseline's MSE."
+    - "CoIFNet's MAE is {mae_ratio_coifnet_over_timemixer:%} of TimeMixer-on-imputed-data's MAE."
+    - "{frac_finite_predictions_coifnet:%} of CoIFNet's forecast entries are finite."
+    - "Raw MAE/MSE side by side: CoIFNet {coifnet_mae}/{coifnet_mse}, impute+DLinear baseline {impute_baseline_mae}/{impute_baseline_mse}, TimeMixer-on-imputed {timemixer_mae}/{timemixer_mse}."
+  establishes: ["Whether CoIFNet's joint imputation-forecasting objective, trained end-to-end on 30%-missing ETTh1 input, produces forecast error at or below a standard impute-then-forecast pipeline on the same data."]
+  does_not_establish: ["The paper's reported 24.40%/23.81% improvement over an unnamed SOTA method at missing rate 0.6 (a different rate, a different, stronger comparator, and a different benchmark suite than run here)", "Memory (4.3x) or time (2.1x) efficiency claims, which are not measured by this harness"]
+  not_measured: ["Point vs block missingness pattern sensitivity", "Behavior at the paper's 0.6 missing rate", "Multiple random seeds / variance across runs"]
+  caveat: "This repo has no BenchPOTS apparatus (its own VALIDATION.md defers that parity run to a human/GPU step), so this harness performs its own three-way comparison at 0.3 missing rate rather than replicating the paper's 0.6-missing-rate SOTA-relative number."
+  next: "Run the BenchPOTS-parity protocol sketched in pypots/forecasting/coifnet/VALIDATION.md (point + block missingness at {0.1,0.3,0.6}, multiple seeds, against CSDI/TimeMixer) on a GPU to check the paper's 24% figure directly."
+
+provenance:
+  mae_ratio_coifnet_over_impute_baseline: "user_guidance"
+  mse_ratio_coifnet_over_impute_baseline: "user_guidance"
+  mae_ratio_coifnet_over_timemixer: "user_guidance"
+  frac_finite_predictions_coifnet: "protocol_doc:pypots/forecasting/coifnet/VALIDATION.md"
+  held_constant: "protocol_doc:pypots/forecasting/coifnet/VALIDATION.md"
+  suite: "synthesized"
+  baseline: "claim_analysis:mismatches (no BenchPOTS apparatus in-repo, capability question, no baseline arm)"

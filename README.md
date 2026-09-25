@@ -575,3 +575,18 @@ Join our waitlist right now to receive the latest news and be the first to try i
 [^55]: Zhang, F., Du, W., Zhang, H., Yu, K., & Qu, S. (2026).
 [HELIX: Hybrid Encoding with Learnable Identity and Cross-dimensional Synthesis for Time Series Imputation](https://arxiv.org/abs/2605.02278).
 *ICML 2026*.
+
+---
+
+## Newly added forecasting model
+
+- **CoIFNet** (Neural Net, `FCST`): joint imputation-forecasting for multivariate time series
+  with missing values — forecasts directly on incomplete input by fusing observed values, the
+  missingness mask, and timestamp features with Cross-Timestep/Cross-Variate Fusion and
+  missing-value-aware reversible normalization (RevON).
+  Tang et al., [arXiv:2506.13064](https://arxiv.org/abs/2506.13064).
+  Ported with attribution from the MIT-licensed [KaiTang-eng/CoIFNet](https://github.com/KaiTang-eng/CoIFNet);
+  see `pypots/forecasting/coifnet/README.md` for provenance and usage, and
+  `pypots/forecasting/coifnet/VALIDATION.md` for the benchmark-parity plan
+  (BenchPOTS parity run pending, deferred to a human/GPU run).
+
