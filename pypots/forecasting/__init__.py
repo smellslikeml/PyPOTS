@@ -6,6 +6,7 @@ Expose all time-series forecasting models.
 # License: BSD-3-Clause
 
 from .bttf import BTTF
+from .coifnet import CoIFNet
 from .csdi import CSDI
 from .dlinear import DLinear
 from .film import FiLM
@@ -25,6 +26,7 @@ from .transformer import Transformer
 
 __all__ = [
     "BTTF",
+    "CoIFNet",
     "CSDI",
     "Transformer",
     "FITS",
